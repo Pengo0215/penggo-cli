@@ -1,10 +1,10 @@
 {
-  "name": "@google/gemini-cli-core",
-  "version": "0.9.0-nightly.20251001.163dba7e",
+  "name": "penggo-cli-core",
+  "version": "0.0.1",
   "description": "Gemini CLI Core",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/google-gemini/gemini-cli.git"
+    "url": "git+https://github.com/Pengo0215/penggo-cli"
   },
   "type": "module",
   "main": "dist/index.js",
