@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import OpenAI from 'openai';
 import type {
   CountTokensResponse,
   GenerateContentResponse,
@@ -16,57 +17,50 @@ import type { ContentGenerator } from './contentGenerator.js';
 export type OpenRouterContentGeneratorConfig = {
   apiKey: string;
   baseUrl?: string;
+  tools?: any[];
 };
 
 export class OpenRouterContentGenerator implements ContentGenerator {
   private apiKey: string;
   private baseUrl: string;
+  private openai: OpenAI;
 
   constructor(config: OpenRouterContentGeneratorConfig) {
     this.apiKey = config.apiKey;
     this.baseUrl = config.baseUrl || 'https://openrouter.ai/api/v1';
+    this.openai = new OpenAI({
+      apiKey: this.apiKey,
+      baseURL: this.baseUrl,
+    });
   }
 
   async generateContent(
     request: GenerateContentParameters,
     // userPromptId: string,
   ): Promise<GenerateContentResponse> {
-    // Convert Gemini format to OpenRouter format
+    // Convert Gemini format to OpenAI format
     const messages = this.convertGeminiToOpenAI(request.contents as any);
     const model = (request as any).model || 'openrouter/auto';
 
-    const body: any = {
+    const params: any = {
       model,
       messages,
-      stream: false,
     };
 
-    if ((request as any).generationConfig) {
-      const config = (request as any).generationConfig;
-      if (config.maxOutputTokens) body.max_tokens = config.maxOutputTokens;
-      if (config.temperature) body.temperature = config.temperature;
-      if (config.topP) body.top_p = config.topP;
+    if (request.config) {
+      const config = request.config;
+      if (config.maxOutputTokens) params.max_tokens = config.maxOutputTokens;
+      if (config.temperature) params.temperature = config.temperature;
+      if (config.topP) params.top_p = config.topP;
+      if (config.tools) {
+        params.tools = this.convertGeminiToolsToOpenAI(config.tools);
+      }
     }
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://github.com/sst/opencode',
-        'X-Title': 'OpenCode CLI',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const completion = await this.openai.chat.completions.create(params);
 
     // Convert OpenAI format back to Gemini format
-    return this.convertOpenAIToGemini(data);
+    return this.convertOpenAIToGemini(completion);
   }
 
   async generateContentStream(
@@ -104,22 +98,66 @@ export class OpenRouterContentGenerator implements ContentGenerator {
     }));
   }
 
-  private convertOpenAIToGemini(data: any): GenerateContentResponse {
+  private convertGeminiToolsToOpenAI(tools: any[]): any[] {
+    const openaiTools: any[] = [];
+    for (const tool of tools) {
+      if (tool.functionDeclarations) {
+        for (const func of tool.functionDeclarations) {
+          openaiTools.push({
+            type: 'function',
+            function: {
+              name: func.name,
+              description: func.description,
+              parameters: func.parametersJsonSchema || func.parameters,
+            },
+          });
+        }
+      } else if (tool.functionDeclaration) {
+        openaiTools.push({
+          type: 'function',
+          function: {
+            name: tool.functionDeclaration.name,
+            description: tool.functionDeclaration.description,
+            parameters: tool.functionDeclaration.parameters,
+          },
+        });
+      }
+    }
+    return openaiTools;
+  }
+
+  private convertOpenAIToGemini(
+    completion: OpenAI.Chat.Completions.ChatCompletion,
+  ): GenerateContentResponse {
+    const message = completion.choices[0].message;
+    let parts: any[] = [];
+
+    if (message.tool_calls) {
+      parts = message.tool_calls.map((tc) => ({
+        functionCall: {
+          name: (tc as any).function.name,
+          args: JSON.parse((tc as any).function.arguments),
+        },
+      }));
+    } else if (message.content) {
+      parts = [{ text: message.content }];
+    }
+
     return {
       candidates: [
         {
           content: {
             role: 'model',
-            parts: [{ text: data.choices[0].message.content }],
+            parts,
           },
           finishReason: 'STOP' as any,
           index: 0,
         },
       ],
       usageMetadata: {
-        promptTokenCount: data.usage?.prompt_tokens || 0,
-        candidatesTokenCount: data.usage?.completion_tokens || 0,
-        totalTokenCount: data.usage?.total_tokens || 0,
+        promptTokenCount: completion.usage?.prompt_tokens || 0,
+        candidatesTokenCount: completion.usage?.completion_tokens || 0,
+        totalTokenCount: completion.usage?.total_tokens || 0,
       },
     } as any;
   }

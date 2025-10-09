@@ -13,6 +13,8 @@ export const OPENROUTER_X_AI_GROK_CODE_FAST_1 =
   'openrouter/x-ai/grok-code-fast-1';
 export const OPENROUTER_GOOGLE_GEMINI_2_5_PRO =
   'openrouter/google/gemini-2.5-pro';
+export const OPENROUTER_GOOGLE_GEMINI_2_5_FLASH =
+  'openrouter/google/gemini-2.5-flash';
 export const OPENROUTER_ANTHROPIC_CLAUDE_3_7_SONNET =
   'openrouter/anthropic/claude-3.7-sonnet';
 export const OPENROUTER_ANTHROPIC_CLAUDE_SONNET_4 =
@@ -51,6 +53,10 @@ export function getEffectiveModel(
   // lite models without needing to list them all as constants.
   if (requestedModel.includes('lite')) {
     return requestedModel;
+  }
+
+  if (requestedModel.includes('openrouter')) {
+    return OPENROUTER_GOOGLE_GEMINI_2_5_FLASH;
   }
 
   // Default fallback for Gemini CLI.

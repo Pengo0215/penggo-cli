@@ -13,6 +13,7 @@ import {
   DEFAULT_GEMINI_MODEL,
   DEFAULT_GEMINI_MODEL_AUTO,
   OPENROUTER_X_AI_GROK_CODE_FAST_1,
+  OPENROUTER_GOOGLE_GEMINI_2_5_FLASH,
   OPENROUTER_GOOGLE_GEMINI_2_5_PRO,
   OPENROUTER_ANTHROPIC_CLAUDE_3_7_SONNET,
   OPENROUTER_ANTHROPIC_CLAUDE_SONNET_4,
@@ -47,6 +48,12 @@ function getModelOptions(authType?: string) {
         title: 'Grok Code Fast',
         description: 'xAI Grok model optimized for code tasks',
         key: OPENROUTER_X_AI_GROK_CODE_FAST_1,
+      },
+      {
+        value: OPENROUTER_GOOGLE_GEMINI_2_5_FLASH,
+        title: 'Gemini 2.5 Flash (OpenRouter)',
+        description: 'Google Gemini 2.5 Flash via OpenRouter',
+        key: OPENROUTER_GOOGLE_GEMINI_2_5_FLASH,
       },
       {
         value: OPENROUTER_GOOGLE_GEMINI_2_5_PRO,

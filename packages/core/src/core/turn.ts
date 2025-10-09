@@ -260,6 +260,18 @@ export class Turn {
 
         // Handle function calls (requesting tool execution)
         const functionCalls = resp.functionCalls ?? [];
+        // Also extract from parts if not present
+        if (functionCalls.length === 0) {
+          const parts = resp.candidates?.[0]?.content?.parts ?? [];
+          for (const part of parts) {
+            if (part.functionCall) {
+              functionCalls.push({
+                name: part.functionCall.name,
+                args: part.functionCall.args,
+              });
+            }
+          }
+        }
         for (const fnCall of functionCalls) {
           const event = this.handlePendingFunctionCall(fnCall);
           if (event) {
